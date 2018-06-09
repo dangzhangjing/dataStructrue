@@ -1,0 +1,296 @@
+
+#include<iostream>
+using namespace std;
+#define NULL 0
+
+template<class K,class V>
+struct AVLTreeNode
+{
+    AVLTreeNode<K, V>* _pLeft;
+    AVLTreeNode<K, V>* _pRight;
+    AVLTreeNode<K, V>*_pParent;
+    K _key;//需要插入结点的值
+    V _value;//代表的是某插入节点的下标
+    int _bf;//平衡因子
+    AVLTreeNode(const K& key, const V& value)
+        :_pLeft(NULL)
+        , _pRight(NULL)
+        , _pParent(NULL)
+        , _key(key)
+        , _value(value)
+        , _bf(0)
+    {}
+};
+template<class K,class V>
+class AVLTree
+{
+    typedef AVLTreeNode<K, V> Node;
+    typedef AVLTreeNode<K, V>* PNode;
+public:
+    AVLTree()
+        :_pRoot(NULL)
+    {}
+    bool Insert(const K& key, const V& value)
+    {
+        //树为空
+        if (NULL == _pRoot)
+        {
+            _pRoot = new Node(key, value);
+
+            return true;
+        }
+        //树不为空
+        //寻找结点应该插入的位置
+        PNode pCur = _pRoot;
+        PNode pParent = NULL;
+        while (pCur)
+        {
+            if (key < pCur->_key)
+            {
+                pParent = pCur;
+                pCur = pCur->_pLeft;
+            }
+            else if (key>pCur->_key)
+            {
+                pParent = pCur;
+                pCur = pCur->_pRight;
+            }
+            else
+                return false;
+        }
+        //插入新结点
+        pCur = new Node(key, value);
+        if (key < pParent->_key)
+            pParent->_pLeft = pCur;
+        else
+            pParent->_pRight = pCur;
+        //与搜索二叉树不同的是，此处有双亲结点，故一定要记得更新双亲结点
+        pCur->_pParent = pParent;
+        //更新平衡因子
+        while (pParent)
+        {
+            if (pCur == pParent->_pLeft)
+                pParent->_bf--;
+            else
+                pParent->_bf++;
+            if (0 == pParent->_bf)//双亲结点的平衡因子为0
+                return true;
+            else if (1 == pParent->_bf  ||  -1 == pParent->_bf)
+            {
+                //接着朝上调整
+                pCur = pParent;
+                pParent = pCur->_pParent;
+            }
+            else
+            {
+                //2(进行旋转）
+                if (2 == pParent->_bf)
+                {
+                    if (1 == pCur->_bf)
+                        _RotateL(pParent);
+                    else
+                        _RotateRL(pParent);
+                }
+                else 
+                {
+                    if (-1 == pCur->_bf)
+                        _RotateR(pParent);
+                    else
+                        _RotateLR(pParent);
+                }
+                break;
+            }
+        }
+        return true;
+    }
+    //求取树的高度
+    int Depth()
+    {
+        return _Depth(_pRoot);
+    }
+    //中序遍历输出树的结点
+    void InOrder()
+    {
+        _InOrder(_pRoot);
+    }
+    //判断AVL树是否平衡
+    bool IsBalance()
+    {
+        int depth;
+        return _IsBalance(_pRoot, depth);
+    }
+private:
+    //求取树的高度
+    int _Depth(PNode pRoot)
+    {
+        if (NULL == pRoot)
+            return 0;
+        int leftDepth = 0;
+        int rightDepth = 0;
+        leftDepth =_Depth(pRoot->_pLeft);
+        rightDepth = _Depth(pRoot->_pRight);
+        //给加1是因为在递归求高度时，最后没有求根结点，故必须在额外加上1
+        return leftDepth > rightDepth ? （leftDepth + 1）:（rightDepth+1）
+    }
+    //判断AVL树是否平衡
+    bool _IsBalance(PNode pRoot, int &depth)
+    {
+        if (NULL == pRoot)
+        {
+            depth = 0;
+            return NULL;
+        }
+        int leftDepth = 0;
+        int rightDepth = 0;
+        //如果根结点的左子树不是AVL树，那就直接返回，不用再做别的判断
+        if (false == _IsBalance(pRoot->_pLeft, leftDepth))
+            return false;
+        if (false == _IsBalance(pRoot->_pRight, rightDepth))
+            return false;
+        //如果右子树的高度与左子树的高度之差不等于根结点的平衡因子，那说明此树不是AVL树
+        if (rightDepth - leftDepth != pRoot->_bf)
+        {
+            cout << "<" << pRoot->_key << pRoot->_value << ">" << "bf异常--->" << pRoot->_bf << endl;
+            return false;
+        }
+        //保存着高度，备用
+        depth = leftDepth > rightDepth ? (leftDepth + 1) : (rightDepth + 1);
+        return true;
+
+    }
+    void _InOrder(PNode pRoot)
+    {
+
+        if (pRoot)
+        {
+            _InOrder(pRoot->_pLeft);
+            cout << "<"<<pRoot->_key <<","<< pRoot->_value << ">"<<"  ";
+            cout << endl;
+            _InOrder(pRoot->_pRight);
+        }
+    }
+    void _RotateL(PNode pParent)//左单旋
+    {
+        PNode pSubR = pParent->_pRight;
+        PNode pSubRL = pSubR->_pLeft;
+        pParent->_pRight = pSubRL;
+        if (pSubRL)//只有此结点非空，才可以更新此结点的双亲结点
+            pSubRL->_pParent = pParent;
+        pSubR->_pLeft = pParent;
+        PNode pPParent = pParent->_pParent;//,在更新pParent的双亲结点之前，保存pParent的双亲结点
+        pParent->_pParent = pSubR;//先保存Ppparent，在更新pParent的父亲结点
+        pSubR->_pParent = pPParent;
+        if (NULL == pPParent)//pParent是根结点
+            _pRoot = pSubR;
+        else//pParnet不是根结点
+        {
+            if (pParent == pPParent->_pLeft)
+                pPParent->_pLeft = pSubR ;//pSubR现在替代了pParent的位置
+            else
+                pPParent->_pRight = pSubR;
+            //旋转过程中，发现只有pParent和pSubR的平衡因子变化了
+            pParent->_bf = pSubR->_bf = 0;
+        }
+    }
+    void _RotateR(PNode pParent)
+    {
+        PNode pSubL = pParent->_pLeft;
+        PNode pSubLR = pSubL->_pRight;
+        pParent->_pLeft = pSubLR;
+        if (pSubLR)
+            pSubLR->_pParent = pParent;
+        pSubL->_pRight= pParent;
+        PNode pPParent = pParent->_pParent;
+        pParent->_pParent = pSubL;//先保存Ppparent，在更新pParent的父亲结点
+        pSubL->_pParent = pPParent;//无论pParent是否是根结点，先把pSubL的双亲先更新，下面就不用考虑更新pSubL的双亲结点了
+        if (NULL == pPParent)
+            _pRoot = pSubL;
+        else
+        {
+            if (pParent == pPParent->_pLeft)
+                pPParent->_pLeft = pSubL;
+            else
+                pPParent->_pRight = pSubL;
+        }
+        //旋转过程中，发现只有pParnet和pSubL的平衡因子变化了
+
+        pParent->_bf = pSubL->_bf = 0;
+    }
+    void _RotateLR(PNode pParent)
+    {
+        PNode pSubL = pParent->_pLeft;
+        PNode pSubLR = pSubL->_pRight;
+        int bf = pSubLR->_bf;
+        //先以pParent的左子树为双亲结点，把此树看成是一棵树，进行左旋转
+        _RotateL(pParent->_pLeft);
+        //在把整棵树进行右旋转
+        _RotateR(pParent);
+        if (1 == pSubLR->_bf)//插入结点后，此时的pSubLR的平衡因子为1
+            pSubL->_bf = -1;
+        else if (-1 == pSubLR->_bf)
+            pParent->_bf = 1;
+    }
+    void _RotateRL(PNode pParent)
+    {
+        PNode pSubR = pParent->_pRight;
+        PNode pSubRL = pSubR->_pLeft;
+        int bf = pSubRL->_bf;
+        //先以pParent的右子树为双亲结点，把此树看成是一棵树，进行右旋转
+        _RotateR(pParent->_pRight);
+        //再把整棵树进行左旋转
+        _RotateL(pParent);
+        if (1 == pSubRL->_bf)
+            pParent->_bf = -1;
+        else if(-1 == pSubRL->_bf)
+            pSubR->_bf = 1;
+    }
+private:
+    PNode _pRoot;
+};
+
+
+
+
+void TestAVLTree()
+{
+    //1.普通场景
+    int array1[] = { 16, 3, 7, 11, 9, 26, 18, 14, 15 };
+    AVLTree<int, int> tree1;
+    //插入结点
+    for (size_t i = 0; i < sizeof(array1) / sizeof(array1[0]); ++i)
+        tree1.Insert(array1[i], i);//key表示的是data，而value表示的是此data对应的下标
+    cout << "普通场景下的二叉树：" << endl;
+    cout << endl;
+    //中序遍历输出结点，检查结点是否插入正确
+    tree1.InOrder();
+    cout << endl;
+    //检查树是否平衡
+    if (tree1.IsBalance())
+        cout << "普通场景：tree1是平衡的" << endl;
+    else
+        cout << "普通场景：tree1是平衡的" << endl;
+    cout << endl;
+
+    //1.特殊场景
+    int array2[] = { 4, 2, 6, 1, 3, 5, 15, 7, 16, 14 };
+    AVLTree<int, int> tree2;
+    //插入结点
+    for (size_t i = 0; i < sizeof(array2) / sizeof(array2[0]); ++i)
+        tree2.Insert(array2[i], i);//key表示的是data，而value表示的是此data对应的下标
+    cout << "特殊场景下的二叉树：" << endl;
+    //中序遍历输出结点，检查结点是否插入正确
+    tree2.InOrder();
+    cout << endl;
+    //检查树是否平衡
+    if (tree2.IsBalance())
+        cout << "特殊场景：tree2是平衡的" << endl;
+    else
+        cout << "特殊场景：tree2是平衡的" << endl;
+
+}
+int main()
+{
+    TestAVLTree();
+    system("pause");
+    return 0;
+}
