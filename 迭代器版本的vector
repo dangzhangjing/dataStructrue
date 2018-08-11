@@ -1,0 +1,248 @@
+#include<iostream>
+using namespace std;
+#include<assert.h>
+template<class T>
+class Vector
+{
+public:
+    typedef T* Iterator;
+public:
+    //构造函数
+    Vector()
+    :_start(NULL)
+    , _finish(NULL)
+    , _endOfStorage(NULL)
+    {}
+    Vector( T* array, size_t size)
+        :_start(new T[size])
+    {
+        for (int i = 0; i < size; ++i)
+            _start[i] = array[i];
+        _finish = _start+size;
+        _endOfStorage = _start+size;
+    }
+    //拷贝构造函数
+    Vector(const Vector<T>& v)
+    {
+        int size = v.Size();
+        for (int i = 0; i < size; ++i)
+            _start[i] = v[i];
+        _finish = _start + size;
+        _endOfStorage = _start + size;
+    }
+    //赋值运算符重载
+    Vector<T>& operator=(const Vector<T>& v)
+    {
+        int size = v.Size();
+        if (this != &v)
+        {
+            for (int i = 0; i < size; ++i)
+                _start[i] = v._start[i];
+            _finish = v._finish;
+            _endOfStorage = v._endOfStorage;
+        }
+        return *this;
+    }
+    //析构函数
+    ~Vector()
+    {
+        if (_start)
+        {
+            delete _start;
+            _start = _finish = _endOfStorage = NULL;
+        }
+    }
+    /////////////////////////////////////////////////////////////////////////////
+    //以下是Vector的迭代器的接口
+    Iterator Begin()
+    {
+        return _start;
+    }
+    Iterator End()
+    {
+        return _finish;
+    }
+    /////////////////////////////////////////////////////////////////////////////
+
+    /////////////////////////////////////////////////////////////////////////////
+    //以下Vector的一些操作
+    /////////////////////////////////////////////////////////////////////////////
+    //尾插
+    void PushBack(const T&data)
+    {
+        _CheckCapacity();//在插入数据之前，需要先检测以下容量，因为空间如果不足的话，是不能存储数据的
+        (*_finish) = data;
+        _finish++;
+    }
+    //尾删
+    void PopBack()
+    {
+        --_finish;
+    }
+    //任意位置的插入
+    void Insert(size_t pos,const T&data)
+    {
+        assert(pos < Size());
+        _CheckCapacity();
+        for (size_t i = Size(); i>=pos; --i)
+            _start[i] = _start[i - 1];
+        _start[pos] = data;
+        ++_finish;
+    }
+    //任意位置的删除
+    void Erase(size_t pos)
+    {
+        assert(pos < Size());
+        for (size_t i = pos + 1; i < Size(); ++i)
+            _start[i - 1] = _start[i];
+        --_finish;
+    }
+    //获取空间中的有效元素
+    size_t Size()const
+    {
+        return _finish - _start;
+    }
+    //如果空间为空，返回true
+    bool Empty()
+    {
+        return _start == _finish;
+    }
+    //重载下标运算符
+    T&operator[](size_t index)
+    {
+        assert(index < Size());
+        return _start[index];
+    }
+    const T&operator[](size_t index)const
+    {
+        assert(index < Size());
+        return _start[index];
+    }
+    //获取空间的容量
+    size_t Capacity()const 
+    {
+        return _endOfStorage - _start;
+    }
+    //删除顺序表中所有元素
+    void clear()
+    {
+        for (int i = 0; i < Size(); ++i)
+            _start[i] = NULL;
+        _finish = _start + 1;
+    }
+    //将有效元素的个数改变为newSize个
+    //第二个参数含义：空间变大后，变大的空间中需要存储的数据，一般情况下，该参数是有缺省值的
+    void Resize(size_t newSize, const T&data = T())
+    {
+        if (newSize < Size())//newSize小于旧空间中有效元素的个数
+            _finish = _start + newSize;
+        else if (newSize > Size() && newSize < Capacity())//newSize大于旧空间中有效元素的个数但是newSize小于旧空间的容量
+        {
+            for (size_t  i = Size(); i < newSize; ++i)
+                _start[i] = data;
+            _finish = _start + newSize;
+        }
+        else //此时newSize大于旧空间的容量
+        {
+            T*temp = new T[newSize];
+            for (size_t  i = 0; i < Size(); ++i)
+                temp[i] = _start[i];
+            for (size_t i = Size(); i < newSize; ++i)
+                temp[i] = data;
+            delete _start;
+            _start = temp;
+            _finish = _start + newSize;
+            _endOfStorage = _start + newSize;
+        }
+    }
+    //返回尾元素
+    T&Back()
+    {
+        assert(*_start);
+        return _start[Size() - 1];
+    }
+    const T&Back()const 
+    {
+        assert(*_start);
+        return _start[Size() - 1];
+    }
+    //返回首元素
+    T&Front()
+    {
+        assert(*_start);
+        return _start[0];
+    }
+    const T&Front()const
+    {
+        assert(*_start);
+        return _start[0];
+    }
+    //打印函数
+    void Print()
+    {
+        _print();
+    }
+private:
+    //检测容量的函数
+    //在增容时，给加上3是因为，有可能旧空间是空的
+    void _CheckCapacity()
+    {
+        if (_finish == _endOfStorage)//此时表示空间已满
+        {
+            size_t oldSize = Size();//旧空间的大小
+            size_t newSize = oldSize * 2 + 3;
+            T* temp = new T[newSize];
+            if (_start)//只有旧空间非空，才可以进行搬移元素
+            {
+                for (size_t  i = 0; i < oldSize; ++i)
+                    temp[i] = _start[i];
+                delete _start;
+            }
+            _start = temp;
+            _finish = _start + oldSize;
+            _endOfStorage = _start + newSize;
+        }
+    }
+    void _print()
+    {
+        for (size_t i = 0; i < Size(); ++i)
+            cout << _start[i] << "   ";
+        cout << endl;
+    }
+    //重载输出运算符
+    friend  ostream& operator<<(ostream&_cout, const Vector<T>& d)
+    {
+        for (size_t i = 0; i < d.Size(); ++i)
+            _cout << d[i] << "  ";
+        return _cout;
+    }
+private:
+    T* _start;//指向空间的起始位置
+    T* _finish;//指向空间最后一个元素的后面
+    T* _endOfStorage;//标记空间的容量，指向空间末尾
+};
+void TestVector()
+{
+    Vector<int> v;
+    v.PushBack(1);
+    v.PushBack(2);
+    v.PushBack(3);
+    v.PushBack(4);
+    v.PushBack(5);
+    cout << "有效元素的个数:>   " << v.Size() << endl;
+    cout << "容量大小为:>  " << v.Capacity() << endl;
+    Vector<int>::Iterator it = v.Begin();
+    while (it != v.End())
+    {
+        cout << *it << "  ";
+        ++it;
+        //使用前置++,是因为这样不会创建临时对象，比后置++的效率高
+    }
+    cout << endl;
+}
+int main()
+{
+    TestVector();
+    system("pause");
+    return 0;
+}
